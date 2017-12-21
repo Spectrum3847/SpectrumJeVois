@@ -73,12 +73,21 @@ public class SpectrumJeVois {
     private double camMode;		//Camera mode either vision processing, driver mode, or another vision processing mode
 
 	public SpectrumJeVois() {
+		//ConnectJeVois and Check if we are connected
+		connectJeVois();
+		checkJeVoisConnection();
+        
+        //Start listening for packets
+        System.out.println("Starting JeVois Listener Threads");
+		jevoisListenerThread.start();
+	} 
+    
+	/*
+	 * Connect to the JeVois Camera
+	 */
+	public void connectJeVois(){
 		int retry_counter = 0;
-
-		//this.intailizeCamera0();
-		//Retry strategy to get this serial port open.
-		//I have yet to see a single retry used assuming the camera is plugged in
-		// but you never know.
+		//Retry strategy to get this serial port open or switch to the other usb ports
 		while(visionPort == null && retry_counter++ < 10){
 			try {
 				System.out.print("Creating JeVois SerialPort...");
@@ -96,9 +105,6 @@ public class SpectrumJeVois {
 						System.out.println("SUCCESS!!");
 					} catch (Exception g) {
 						System.out.println("FAILED!!");
-			            //e.printStackTrace();
-			            //f.printStackTrace();
-			            //g.printStackTrace();
 						System.out.println("Failed to connect to JeVois on any port!");
 			            sleep(500);
 			            System.out.println("Retry " + Integer.toString(retry_counter));
@@ -106,29 +112,21 @@ public class SpectrumJeVois {
 				}
 			}
 		}
-		
-		//Report an error if we didn't get to open the serial port
-		if(visionPort == null){
-			DriverStation.reportError("Error, Cannot open serial port to JeVois. Not starting vision system.", false);
-			return;
-		}
-		//this.startCameraStream();
+	}
+	
+	/*
+	 * Check if we are able to communicate with the JeVois Camera
+	 */
+	public boolean checkJeVoisConnection(){
 		//Test to make sure we are actually talking to the JeVois
 		if(sendPing() != 0){
 			DriverStation.reportError("JeVois ping test failed. Not starting vision system.", false);
-			return;
+			return false;
 		}
-		
-			
-		//Start streaming the JeVois
-        startCameraStream1(); 
-        
-        //Start listening for packets
-        System.out.println("Starting Packet Listener Threads");
-		packetListenerThread.start();
-	} 
-    
-
+		System.out.println("JeVois Connection Good!");
+		return true;
+	}
+	
     /**
      * Open an Mjpeg streamer from the JeVois camera
      */
@@ -454,17 +452,21 @@ public class SpectrumJeVois {
              JSONObject jsonObject = (JSONObject) obj;
              //System.out.println(jsonObject);
 
-             double target = (Long) jsonObject.get("Target");
-             System.out.println(target);
-
-             double xcntr = (double) jsonObject.get("Xcntr");
-             System.out.println(xcntr);
+             tx = (double) jsonObject.get("tx");
+             System.out.println(tx);
              
-             double ycntr = (double) jsonObject.get("Ycntr");
-             System.out.println(ycntr);
+             ty = (double) jsonObject.get("ty");
+             System.out.println(ty);
+             
+             ta = (double) jsonObject.get("ta");
+             System.out.println(ta);
+             
+             tv = (boolean) jsonObject.get("tv");
+             System.out.println(tv);
 
-         } catch (ParseException e) {
-             e.printStackTrace();
+         } catch (Exception e){
+        	 System.out.println("Parse Exception, probably need to check you JeVois output that it's matching what you are parsing");
+        	 e.printStackTrace();
          }
     }
     
@@ -530,7 +532,7 @@ public class SpectrumJeVois {
     /**
      * This thread runs a periodic task in the background to listen for vision camera packets.
      */
-    Thread packetListenerThread = new Thread(new Runnable(){
+    Thread jevoisListenerThread = new Thread(new Runnable(){
     	public void run(){
     		while(true){
     			backgroundUpdate();		

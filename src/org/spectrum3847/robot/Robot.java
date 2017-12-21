@@ -48,6 +48,7 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void disabledInit() {
+		jevoisCam.setSerOutEnable(true);
 		jevoisCam.startCameraStream1();
 	}
 
@@ -69,7 +70,7 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void autonomousInit() {
-		jevoisCam.stopCameraStream();
+		jevoisCam.startCameraStream2();
 		jevoisCam.setSerOutEnable(true);
 		
 		autonomousCommand = chooser.getSelected();
